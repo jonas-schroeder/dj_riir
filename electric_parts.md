@@ -63,3 +63,6 @@
 |  |        |
 |  |        |
 |  |        |
+
+# Need to buy:
+- boost converter
