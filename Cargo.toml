@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+cpal = "0.17.3"
+eframe = "0.34.2"
+egui-file-dialog = "0.13.0"
+egui_extras = "0.34.2"
+fundsp = "0.23.0"
+symphonia = "0.6.0"
