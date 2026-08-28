@@ -13,30 +13,21 @@ unsigned long lastDebounceTime = 0;
 unsigned long debounceTimer = 0;
 const int debounceDelay = 10;
 
-// potentiometer 
-int potReading = 0; 
-int potState = 0;
-int potStatePrev = 0;
+// potentiometer
 int potPin = A0;
-int potMidiState = 0;
-int potMidiStatePrev = 0;
 const int POT_CC = 10;
-const int POT_THRESHOLD = 4;
-const int POT_TIMEOUT = 300;
-unsigned long potTimePrev = 0;
-unsigned long potTimer = 0;
+int midiVal = 0;
+int midiValPrev = 0;
 
-float snapMultiplier = 0.01; // default value, maybe omit
-ResponsiveAnalogRead responsivePot(pin=potPin, sleepEnable=true, snapMultiplier=snapMultiplier);
+ResponsiveAnalogRead responsivePot(potPin, true);
 
 void setup() {
-  Serial.begin(9600);
-  
+  Serial.begin(115200);
+
   pinMode(buttonPin, INPUT_PULLUP);
   pinMode(ledPin, OUTPUT);
 
-  responsivePot = ResponsiveAnalogRead(0, true, snapMultiplier);
-  responsivePot.setAnalogResolution(1024); // number of values, not highes value -> 1024 not 1023, default value -> maybe omit 
+  responsivePot.setAnalogResolution(1024);  // number of values, not highes value -> 1024 not 1023, default value -> maybe omit
 }
 
 void loop() {
@@ -44,13 +35,13 @@ void loop() {
   buttonState = digitalRead(buttonPin);
 
   // debouncing
-  if (millis() - lastDebounceTime > debounceDelay){
+  if (millis() - lastDebounceTime > debounceDelay) {
     // button state changes
     if (buttonState != buttonStatePrev) {
       lastDebounceTime = millis();
 
       // pressed
-      if(buttonState == LOW){
+      if (buttonState == LOW) {
         Serial.println("PRESSED");
         noteOn(0, 38, 127);
         MidiUSB.flush();
@@ -66,50 +57,41 @@ void loop() {
 
 
 
-  
-  potReading = analogRead(potPin);
-  responsivePot.update(potReading);
-  potState = responsivePot.getValue();
-  potMidiState = map (potState, 0, 1023, 0, 127);
 
-  // ignore noise
-  int potVar = abs(potState - potStatePrev);
-  if (potVar > POT_THRESHOLD){
-    potTimePrev = millis();
-  }
+  responsivePot.update();
 
-  potTimer = millis() - potTimePrev; 
+  // if the responsive value has change, print out 'changed'
+  if (responsivePot.hasChanged()) {
+    int potValue = responsivePot.getValue();
+    midiVal = map(potValue, 0, 1023, 0, 127);
 
-  if (potTimer < POT_TIMEOUT){
-    if (potMidiState != potMidiStatePrev){
-      controlChange(0, POT_CC, potMidiState);
+    if (midiVal != midiValPrev) {
+      <Serial.println(potValue);
+      Serial.println(midiVal);
+
+
+      controlChange(0, POT_CC, midiVal);
       MidiUSB.flush();
+      ledVal = map(potValue, 0, 1023, 0, 255);
 
-      Serial.println(potReading);
-
-      Serial.println(potMidiState);
-      ledVal = map(potState, 0, 1023, 0, 255);
       analogWrite(ledPin, ledVal);
 
-      potMidiStatePrev = potMidiState;
+      midiValPrev = midiVal;
     }
-    potStatePrev = potState;
   }
-
-
 }
 
 void noteOn(byte channel, byte pitch, byte velocity) {
-  midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
+  midiEventPacket_t noteOn = { 0x09, 0x90 | channel, pitch, velocity };
   MidiUSB.sendMIDI(noteOn);
 }
 
 void noteOff(byte channel, byte pitch, byte velocity) {
-  midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
+  midiEventPacket_t noteOff = { 0x08, 0x80 | channel, pitch, velocity };
   MidiUSB.sendMIDI(noteOff);
 }
 
 void controlChange(byte channel, byte control, byte value) {
-  midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
+  midiEventPacket_t event = { 0x0B, 0xB0 | channel, control, value };
   MidiUSB.sendMIDI(event);
 }
